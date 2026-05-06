@@ -16,7 +16,7 @@ Most existing TLV libraries in Python target byte-oriented BER/DER (X.690, EMV c
 - **Length measurement:** bytes-on-wire vs logical units
 - **LTV variants where length includes the tag**
 
-`pytlv-codec` provides a flexible, configurable codec for these formats. Built from public specs (ISO 8583, EMV Books, acquirer documentation) — no proprietary code involved.
+`pytlv-codec` provides a flexible, configurable codec for these formats.
 
 ## Status
 
