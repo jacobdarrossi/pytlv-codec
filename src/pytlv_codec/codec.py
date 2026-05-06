@@ -1,9 +1,18 @@
 """Codec for encoding and decoding TLV/LTV streams.
 
-This is the v0.1.0 minimal implementation — supports only the default
-configuration (TLV order, ASCII everywhere, length counts bytes-on-wire,
-length_includes_tag=False). Other configurations raise UnsupportedConfigError
-until implemented in subsequent versions.
+The codec is string-in / string-out. For non-ASCII encodings (BCD, HEX, BINARY),
+the strings represent the hex representation of the underlying bytes — downstream
+conversion to actual binary is the responsibility of the caller (or a downstream
+library like pyiso8583).
+
+Supported in v0.2.0:
+- Order.TLV and Order.LTV
+- length_includes_tag flag
+- All encodings (ASCII, BCD, HEX, BINARY) for tag / length
+- All value types (ASCII, BCD, HEX, BINARY) for length calculation
+
+Not yet supported:
+- LengthMeasure.LOGICAL_UNITS (only BYTES_ON_WIRE works currently)
 """
 
 from __future__ import annotations
@@ -13,6 +22,7 @@ import string
 from pytlv_codec.config import (
     CodecConfig,
     Encoding,
+    LengthMeasure,
     Order,
     ValueType,
 )
@@ -35,6 +45,7 @@ class Codec:
         """Encode a dict of {tag: value} pairs into a TLV/LTV string."""
         self._guard_supported()
 
+        cfg = self.config
         parts: list[str] = []
 
         for tag, value in data.items():
@@ -44,7 +55,10 @@ class Codec:
             length = self._compute_length(value)
             length_str = self._format_length(length)
 
-            parts.append(tag + length_str + value)
+            if cfg.order == Order.TLV:
+                parts.append(tag + length_str + value)
+            else:  # LTV
+                parts.append(length_str + tag + value)
 
         return "".join(parts)
 
@@ -57,18 +71,35 @@ class Codec:
         pos = 0
 
         while pos < len(encoded):
-            tag, pos = self._read_field(encoded, pos, cfg.tag_size, "tag")
-            self._validate_tag_alphabet(tag)
-            length_str, pos = self._read_field(encoded, pos, cfg.length_size, "length")
+            if cfg.order == Order.TLV:
+                tag, pos = self._read_field(encoded, pos, cfg.tag_size, "tag")
+                self._validate_tag_alphabet(tag)
+                length_str, pos = self._read_field(
+                    encoded, pos, cfg.length_size, "length"
+                )
+                length = self._parse_length(length_str, pos - cfg.length_size)
+                value_chars = self._value_chars_for_length(length)
+            else:  # LTV
+                length_str, pos = self._read_field(
+                    encoded, pos, cfg.length_size, "length"
+                )
+                length = self._parse_length(length_str, pos - cfg.length_size)
+                tag, pos = self._read_field(encoded, pos, cfg.tag_size, "tag")
+                self._validate_tag_alphabet(tag)
 
-            try:
-                length = int(length_str)
-            except ValueError as exc:
-                raise InvalidTLVError(
-                    f"Invalid length {length_str!r} at position {pos - cfg.length_size}"
-                ) from exc
+                if cfg.length_includes_tag:
+                    tag_bytes = self._field_wire_bytes(cfg.tag_size, cfg.tag_encoding)
+                    value_bytes = length - tag_bytes
+                    if value_bytes < 0:
+                        raise InvalidTLVError(
+                            f"Length {length} smaller than tag size {tag_bytes} bytes "
+                            f"(length_includes_tag=True)"
+                        )
+                    value_chars = self._wire_bytes_to_value_chars(value_bytes)
+                else:
+                    value_chars = self._value_chars_for_length(length)
 
-            value, pos = self._read_field(encoded, pos, length, "value")
+            value, pos = self._read_field(encoded, pos, value_chars, "value")
 
             if tag in result and not cfg.allow_duplicate_tags:
                 raise InvalidTLVError(f"Duplicate tag {tag!r} not allowed")
@@ -80,24 +111,16 @@ class Codec:
     # -- Internal helpers ------------------------------------------------
 
     def _guard_supported(self) -> None:
-        """Raise UnsupportedConfigError for configurations not yet supported in v0.1.0."""
+        """Raise UnsupportedConfigError for configurations not yet supported."""
         cfg = self.config
         unsupported: list[str] = []
 
-        if cfg.order != Order.TLV:
-            unsupported.append(f"order={cfg.order.value}")
-        if cfg.tag_encoding != Encoding.ASCII:
-            unsupported.append(f"tag_encoding={cfg.tag_encoding.value}")
-        if cfg.length_encoding != Encoding.ASCII:
-            unsupported.append(f"length_encoding={cfg.length_encoding.value}")
-        if cfg.value_type != ValueType.ASCII:
-            unsupported.append(f"value_type={cfg.value_type.value}")
-        if cfg.length_includes_tag:
-            unsupported.append("length_includes_tag=True")
+        if cfg.length_counts != LengthMeasure.BYTES_ON_WIRE:
+            unsupported.append(f"length_counts={cfg.length_counts.value}")
 
         if unsupported:
             raise UnsupportedConfigError(
-                f"Configuration not yet supported in v0.1.0: {', '.join(unsupported)}"
+                f"Configuration not yet supported: {', '.join(unsupported)}"
             )
 
     def _validate_tag(self, tag: str) -> None:
@@ -109,7 +132,6 @@ class Codec:
         self._validate_tag_alphabet(tag)
 
     def _validate_tag_alphabet(self, tag: str) -> None:
-        """Validate that tag chars are valid for the configured tag_encoding."""
         cfg = self.config
         alphabet = self._alphabet_for(cfg.tag_encoding)
         invalid = [c for c in tag if c not in alphabet]
@@ -125,9 +147,44 @@ class Codec:
         if not value and not cfg.allow_empty_value:
             raise EncodingError("Empty value not allowed (allow_empty_value=False)")
 
+        # Validate value alphabet against value_type's expected encoding
+        # (ASCII allows any text; non-ASCII types require hex chars)
+        if cfg.value_type != ValueType.ASCII:
+            alphabet = self._alphabet_for_value_type(cfg.value_type)
+            invalid = [c for c in value if c not in alphabet]
+            if invalid:
+                raise EncodingError(
+                    f"Value {value!r} contains invalid character(s) "
+                    f"{invalid!r} for value_type {cfg.value_type.value} "
+                    f"(allowed: {alphabet!r})"
+                )
+
+            # BCD/HEX/BINARY: hex repr must have even length to map cleanly to bytes
+            if len(value) % 2 != 0:
+                raise EncodingError(
+                    f"Value {value!r} (value_type={cfg.value_type.value}) "
+                    f"must have an even number of characters"
+                )
+
     def _compute_length(self, value: str) -> int:
-        """Compute the length of value in the unit defined by config (ASCII: chars = bytes)."""
-        return len(value)
+        """Compute the length value to put in the length field, in bytes-on-wire."""
+        cfg = self.config
+
+        value_bytes = self._value_wire_bytes(value)
+
+        if cfg.length_includes_tag:
+            tag_bytes = self._field_wire_bytes(cfg.tag_size, cfg.tag_encoding)
+            return value_bytes + tag_bytes
+
+        return value_bytes
+
+    def _value_wire_bytes(self, value: str) -> int:
+        """How many bytes the value occupies on the wire."""
+        cfg = self.config
+        if cfg.value_type == ValueType.ASCII:
+            return len(value)
+        # BCD/HEX/BINARY: 2 hex chars = 1 byte
+        return len(value) // 2
 
     def _format_length(self, length: int) -> str:
         cfg = self.config
@@ -138,19 +195,45 @@ class Codec:
             )
         return length_str
 
+    def _parse_length(self, length_str: str, position: int) -> int:
+        try:
+            return int(length_str)
+        except ValueError as exc:
+            raise InvalidTLVError(
+                f"Invalid length {length_str!r} at position {position}"
+            ) from exc
+
+    def _value_chars_for_length(self, length_in_bytes: int) -> int:
+        """How many string chars correspond to length_in_bytes for the configured value_type."""
+        cfg = self.config
+        if cfg.value_type == ValueType.ASCII:
+            return length_in_bytes
+        # BCD/HEX/BINARY: 1 byte = 2 hex chars
+        return length_in_bytes * 2
+
+    def _wire_bytes_to_value_chars(self, value_bytes: int) -> int:
+        """Same as _value_chars_for_length, named for clarity in LTV path."""
+        return self._value_chars_for_length(value_bytes)
+
     @staticmethod
-    def _read_field(encoded: str, pos: int, size: int, field_name: str) -> tuple[str, int]:
+    def _read_field(
+        encoded: str, pos: int, size: int, field_name: str
+    ) -> tuple[str, int]:
         if pos + size > len(encoded):
             raise InvalidTLVError(f"Truncated {field_name} at position {pos}")
         return encoded[pos : pos + size], pos + size
 
     @staticmethod
-    def _alphabet_for(encoding: Encoding) -> str:
-        """Return the valid character set for a given encoding.
+    def _field_wire_bytes(size_in_units: int, encoding: Encoding) -> int:
+        """How many wire bytes for a tag/length field of given size_in_units."""
+        if encoding == Encoding.ASCII:
+            return size_in_units
+        # BCD/HEX/BINARY: 2 chars = 1 byte
+        return size_in_units // 2
 
-        Used for validating that tag/value strings contain only characters that
-        the encoding can faithfully represent.
-        """
+    @staticmethod
+    def _alphabet_for(encoding: Encoding) -> str:
+        """Valid character set for tag/length encoding."""
         if encoding == Encoding.ASCII:
             return string.ascii_letters + string.digits
         if encoding == Encoding.BCD:
@@ -160,3 +243,17 @@ class Codec:
         if encoding == Encoding.BINARY:
             return string.hexdigits
         raise ValueError(f"Unknown encoding {encoding!r}")
+
+    @staticmethod
+    def _alphabet_for_value_type(value_type: ValueType) -> str:
+        """Valid character set for value_type."""
+        if value_type == ValueType.ASCII:
+            # ASCII values can contain any printable text — no restriction at this layer
+            return string.printable
+        if value_type == ValueType.BCD:
+            return string.digits
+        if value_type == ValueType.HEX:
+            return string.hexdigits
+        if value_type == ValueType.BINARY:
+            return string.hexdigits
+        raise ValueError(f"Unknown value_type {value_type!r}")

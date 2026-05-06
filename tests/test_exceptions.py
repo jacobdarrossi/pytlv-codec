@@ -7,6 +7,7 @@ from pytlv_codec import (
     CodecConfig,
     EncodingError,
     InvalidTLVError,
+    LengthMeasure,
     Order,
     PytlvError,
     UnsupportedConfigError,
@@ -112,18 +113,12 @@ class TestDecodingErrors:
 
 
 class TestUnsupportedConfig:
-    """UnsupportedConfigError raised for v0.1.0 limits."""
+    """UnsupportedConfigError raised for current limits."""
 
-    def test_ltv_order_raises_unsupported_config(self) -> None:
-        codec = Codec(CodecConfig(order=Order.LTV))
+    def test_logical_units_length_measure_raises_unsupported_config(self) -> None:
+        codec = Codec(CodecConfig(length_counts=LengthMeasure.LOGICAL_UNITS))
 
-        with pytest.raises(UnsupportedConfigError, match="order=ltv"):
-            codec.encode({"01": "x"})
-
-    def test_length_includes_tag_raises_unsupported_config(self) -> None:
-        codec = Codec(CodecConfig(length_includes_tag=True))
-
-        with pytest.raises(UnsupportedConfigError, match="length_includes_tag=True"):
+        with pytest.raises(UnsupportedConfigError, match="length_counts=logical_units"):
             codec.encode({"01": "x"})
 
 
@@ -143,14 +138,14 @@ class TestExceptionsCanBeCaughtGenerically:
             codec.decode("0")
 
     def test_unsupported_config_caught_as_not_implemented(self) -> None:
-        codec = Codec(CodecConfig(order=Order.LTV))
+        codec = Codec(CodecConfig(length_counts=LengthMeasure.LOGICAL_UNITS))
 
         with pytest.raises(NotImplementedError):
             codec.encode({"01": "x"})
 
     def test_all_caught_as_pytlv_error(self) -> None:
         codec_a = Codec(CodecConfig())
-        codec_b = Codec(CodecConfig(order=Order.LTV))
+        codec_b = Codec(CodecConfig(length_counts=LengthMeasure.LOGICAL_UNITS))
 
         with pytest.raises(PytlvError):
             codec_a.encode({"X": "value"})

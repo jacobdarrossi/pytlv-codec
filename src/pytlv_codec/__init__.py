@@ -15,7 +15,7 @@ from pytlv_codec.exceptions import (
     UnsupportedConfigError,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "Codec",
