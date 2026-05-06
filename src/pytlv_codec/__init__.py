@@ -14,8 +14,15 @@ from pytlv_codec.exceptions import (
     PytlvError,
     UnsupportedConfigError,
 )
+from pytlv_codec.schema import (
+    LengthPrefix,
+    LengthPrefixEncoding,
+    Subfield,
+    SubfieldSchema,
+    SubfieldType,
+)
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "Codec",
@@ -24,8 +31,13 @@ __all__ = [
     "EncodingError",
     "InvalidTLVError",
     "LengthMeasure",
+    "LengthPrefix",
+    "LengthPrefixEncoding",
     "Order",
     "PytlvError",
+    "Subfield",
+    "SubfieldSchema",
+    "SubfieldType",
     "UnsupportedConfigError",
     "ValueType",
     "__version__",

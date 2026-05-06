@@ -15,7 +15,7 @@ Most existing TLV libraries in Python target byte-oriented BER/DER (X.690, EMV c
 
 ## Status
 
-🚧 Early development (v0.2.0). API may change before 1.0.
+🚧 Early development (v0.3.0). API may change before 1.0.
 
 ## Install
 
@@ -69,6 +69,54 @@ encoded = codec.encode({"33": opaque_payload})
 
 decoded = codec.decode(encoded)
 # decoded == {"33": opaque_payload}
+```
+
+## Schema-driven payload (structured TLV values)
+
+Many real-world TLV values are not opaque blobs — they are concatenations of multiple named subfields, each with its own type (BCD, ASCII, BINARY) and either fixed size or variable length with a length prefix. `SubfieldSchema` lets you describe the structure once and pack/unpack with named values.
+
+```python
+from pytlv_codec import (
+    Codec, CodecConfig, Encoding, Order, ValueType,
+    SubfieldSchema, Subfield, SubfieldType,
+    LengthPrefix, LengthPrefixEncoding,
+)
+
+# 1. Describe the structured payload
+schema = SubfieldSchema([
+    Subfield("acquirer_code", SubfieldType.BCD,    size_bytes=3),   # 3 bytes BCD
+    Subfield("merchant_id",   SubfieldType.BCD,    size_bytes=6),
+    Subfield("currency_code", SubfieldType.ASCII,  size_bytes=3),   # "USD"
+    # variable-length: length prefix is 1 byte BCD (max 99 bytes)
+    Subfield(
+        "merchant_name",
+        SubfieldType.ASCII,
+        length_prefix=LengthPrefix(LengthPrefixEncoding.BCD, size_bytes=1),
+    ),
+])
+
+# 2. Pack natural values into a hex payload string
+payload_hex = schema.pack({
+    "acquirer_code": "054497",        # BCD digits
+    "merchant_id":   "000001000965",
+    "currency_code": "USD",            # ASCII text
+    "merchant_name": "STORE 01",       # any length up to 99 bytes
+})
+
+# 3. Wrap in a TLV envelope (acquirer-style LTV / BCD)
+codec = Codec(CodecConfig(
+    order=Order.LTV,
+    tag_size=2, tag_encoding=Encoding.BCD,
+    length_size=4, length_encoding=Encoding.BCD,
+    value_type=ValueType.BINARY,
+    length_includes_tag=True,
+))
+encoded = codec.encode({"33": payload_hex})
+
+# 4. Round trip: decode the envelope, then unpack the schema
+decoded_envelope = codec.decode(encoded)
+fields = schema.unpack(decoded_envelope["33"])
+# fields == {"acquirer_code": "054497", "merchant_id": "...", "currency_code": "USD", "merchant_name": "STORE 01"}
 ```
 
 ## Configuration reference

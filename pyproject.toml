@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pytlv-codec"
-version = "0.2.0"
+version = "0.3.0"
 description = "Configurable TLV/LTV codec for payment protocol sub-fields (ISO 8583, acquirer-style)"
 readme = "README.md"
 license = "MIT"
