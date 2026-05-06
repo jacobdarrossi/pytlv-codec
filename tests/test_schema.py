@@ -77,31 +77,23 @@ class TestSchemaValidation:
 
 class TestFixedSizePack:
     def test_pack_bcd(self) -> None:
-        schema = SubfieldSchema(
-            [Subfield("acquirer", SubfieldType.BCD, size_bytes=3)]
-        )
+        schema = SubfieldSchema([Subfield("acquirer", SubfieldType.BCD, size_bytes=3)])
         result = schema.pack({"acquirer": "054497"})
         assert result == "054497"
 
     def test_pack_ascii_converts_to_hex(self) -> None:
-        schema = SubfieldSchema(
-            [Subfield("currency", SubfieldType.ASCII, size_bytes=3)]
-        )
+        schema = SubfieldSchema([Subfield("currency", SubfieldType.ASCII, size_bytes=3)])
         result = schema.pack({"currency": "USD"})
         # 'U'=0x55, 'S'=0x53, 'D'=0x44
         assert result == "555344"
 
     def test_pack_binary(self) -> None:
-        schema = SubfieldSchema(
-            [Subfield("data", SubfieldType.BINARY, size_bytes=4)]
-        )
+        schema = SubfieldSchema([Subfield("data", SubfieldType.BINARY, size_bytes=4)])
         result = schema.pack({"data": "DEADBEEF"})
         assert result == "DEADBEEF"
 
     def test_pack_binary_normalizes_to_uppercase(self) -> None:
-        schema = SubfieldSchema(
-            [Subfield("data", SubfieldType.BINARY, size_bytes=4)]
-        )
+        schema = SubfieldSchema([Subfield("data", SubfieldType.BINARY, size_bytes=4)])
         assert schema.pack({"data": "deadbeef"}) == "DEADBEEF"
 
     def test_pack_mixed(self) -> None:
@@ -112,29 +104,21 @@ class TestFixedSizePack:
                 Subfield("data", SubfieldType.BINARY, size_bytes=2),
             ]
         )
-        result = schema.pack(
-            {"acquirer": "054497", "currency": "USD", "data": "ABCD"}
-        )
+        result = schema.pack({"acquirer": "054497", "currency": "USD", "data": "ABCD"})
         assert result == "054497" + "555344" + "ABCD"
 
 
 class TestFixedSizeUnpack:
     def test_unpack_bcd(self) -> None:
-        schema = SubfieldSchema(
-            [Subfield("acquirer", SubfieldType.BCD, size_bytes=3)]
-        )
+        schema = SubfieldSchema([Subfield("acquirer", SubfieldType.BCD, size_bytes=3)])
         assert schema.unpack("054497") == {"acquirer": "054497"}
 
     def test_unpack_ascii_converts_back_from_hex(self) -> None:
-        schema = SubfieldSchema(
-            [Subfield("currency", SubfieldType.ASCII, size_bytes=3)]
-        )
+        schema = SubfieldSchema([Subfield("currency", SubfieldType.ASCII, size_bytes=3)])
         assert schema.unpack("555344") == {"currency": "USD"}
 
     def test_unpack_binary_normalizes_to_uppercase(self) -> None:
-        schema = SubfieldSchema(
-            [Subfield("data", SubfieldType.BINARY, size_bytes=4)]
-        )
+        schema = SubfieldSchema([Subfield("data", SubfieldType.BINARY, size_bytes=4)])
         assert schema.unpack("deadbeef") == {"data": "DEADBEEF"}
 
     def test_roundtrip_mixed(self) -> None:
@@ -197,9 +181,7 @@ class TestVariableLengthPack:
                 Subfield(
                     "data",
                     SubfieldType.BINARY,
-                    length_prefix=LengthPrefix(
-                        LengthPrefixEncoding.BINARY, size_bytes=1
-                    ),
+                    length_prefix=LengthPrefix(LengthPrefixEncoding.BINARY, size_bytes=1),
                 )
             ]
         )
@@ -305,9 +287,7 @@ class TestPackErrors:
                 Subfield(
                     "a",
                     SubfieldType.BCD,
-                    length_prefix=LengthPrefix(
-                        LengthPrefixEncoding.BCD, size_bytes=1
-                    ),
+                    length_prefix=LengthPrefix(LengthPrefixEncoding.BCD, size_bytes=1),
                 )
             ]
         )
@@ -333,9 +313,7 @@ class TestUnpackErrors:
                 Subfield(
                     "a",
                     SubfieldType.BCD,
-                    length_prefix=LengthPrefix(
-                        LengthPrefixEncoding.BCD, size_bytes=2
-                    ),
+                    length_prefix=LengthPrefix(LengthPrefixEncoding.BCD, size_bytes=2),
                 )
             ]
         )
@@ -348,9 +326,7 @@ class TestUnpackErrors:
                 Subfield(
                     "a",
                     SubfieldType.BCD,
-                    length_prefix=LengthPrefix(
-                        LengthPrefixEncoding.BCD, size_bytes=1
-                    ),
+                    length_prefix=LengthPrefix(LengthPrefixEncoding.BCD, size_bytes=1),
                 )
             ]
         )

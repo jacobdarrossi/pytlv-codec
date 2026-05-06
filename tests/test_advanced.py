@@ -1,4 +1,8 @@
-"""Tests for advanced configurations: LTV, BCD/HEX/BINARY encodings, length_includes_tag, value_type=BINARY."""
+"""Tests for advanced configurations.
+
+Covers LTV order, BCD/HEX/BINARY encodings, length_includes_tag, and
+value_type=BINARY length calculation.
+"""
 
 import pytest
 
@@ -140,8 +144,7 @@ class TestRealWorldAcquirerExample:
         # subfields — currency code, amounts, references — but to this codec
         # it is just opaque payload).
         opaque_payload = (
-            "05449700000100096508400000010009660000010009"
-            "665553443132333435021234567806"
+            "05449700000100096508400000010009660000010009665553443132333435021234567806"
         )
         assert len(opaque_payload) == 74  # 37 bytes when interpreted as hex
 
@@ -176,11 +179,7 @@ class TestRealWorldAcquirerExample:
         )
         codec = Codec(config)
 
-        encoded = (
-            "0038330544970000010009650840000001000966"
-            "00000100096655534431323334350212345678"
-            "06"
-        )
+        encoded = "00383305449700000100096508400000010009660000010009665553443132333435021234567806"
 
         result = codec.decode(encoded)
 
@@ -202,10 +201,7 @@ class TestRealWorldAcquirerExample:
         codec = Codec(config)
 
         original = {
-            "33": (
-                "05449700000100096508400000010009660000010009"
-                "665553443132333435021234567806"
-            )
+            "33": ("05449700000100096508400000010009660000010009665553443132333435021234567806")
         }
         encoded = codec.encode(original)
         decoded = codec.decode(encoded)

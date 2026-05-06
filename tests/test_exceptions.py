@@ -8,7 +8,6 @@ from pytlv_codec import (
     EncodingError,
     InvalidTLVError,
     LengthMeasure,
-    Order,
     PytlvError,
     UnsupportedConfigError,
 )

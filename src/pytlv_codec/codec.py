@@ -74,15 +74,11 @@ class Codec:
             if cfg.order == Order.TLV:
                 tag, pos = self._read_field(encoded, pos, cfg.tag_size, "tag")
                 self._validate_tag_alphabet(tag)
-                length_str, pos = self._read_field(
-                    encoded, pos, cfg.length_size, "length"
-                )
+                length_str, pos = self._read_field(encoded, pos, cfg.length_size, "length")
                 length = self._parse_length(length_str, pos - cfg.length_size)
                 value_chars = self._value_chars_for_length(length)
             else:  # LTV
-                length_str, pos = self._read_field(
-                    encoded, pos, cfg.length_size, "length"
-                )
+                length_str, pos = self._read_field(encoded, pos, cfg.length_size, "length")
                 length = self._parse_length(length_str, pos - cfg.length_size)
                 tag, pos = self._read_field(encoded, pos, cfg.tag_size, "tag")
                 self._validate_tag_alphabet(tag)
@@ -126,9 +122,7 @@ class Codec:
     def _validate_tag(self, tag: str) -> None:
         cfg = self.config
         if len(tag) != cfg.tag_size:
-            raise EncodingError(
-                f"Tag {tag!r} has length {len(tag)}, expected {cfg.tag_size}"
-            )
+            raise EncodingError(f"Tag {tag!r} has length {len(tag)}, expected {cfg.tag_size}")
         self._validate_tag_alphabet(tag)
 
     def _validate_tag_alphabet(self, tag: str) -> None:
@@ -199,9 +193,7 @@ class Codec:
         try:
             return int(length_str)
         except ValueError as exc:
-            raise InvalidTLVError(
-                f"Invalid length {length_str!r} at position {position}"
-            ) from exc
+            raise InvalidTLVError(f"Invalid length {length_str!r} at position {position}") from exc
 
     def _value_chars_for_length(self, length_in_bytes: int) -> int:
         """How many string chars correspond to length_in_bytes for the configured value_type."""
@@ -216,9 +208,7 @@ class Codec:
         return self._value_chars_for_length(value_bytes)
 
     @staticmethod
-    def _read_field(
-        encoded: str, pos: int, size: int, field_name: str
-    ) -> tuple[str, int]:
+    def _read_field(encoded: str, pos: int, size: int, field_name: str) -> tuple[str, int]:
         if pos + size > len(encoded):
             raise InvalidTLVError(f"Truncated {field_name} at position {pos}")
         return encoded[pos : pos + size], pos + size

@@ -23,7 +23,7 @@ from pytlv_codec.exceptions import EncodingError, InvalidTLVError
 class SubfieldType(Enum):
     """Semantic type of a subfield's natural representation."""
 
-    BCD = "bcd"      # value is a string of decimal digits (0-9)
+    BCD = "bcd"  # value is a string of decimal digits (0-9)
     ASCII = "ascii"  # value is ASCII text
     BINARY = "binary"  # value is a hex string
 
@@ -45,9 +45,7 @@ class LengthPrefix:
 
     def __post_init__(self) -> None:
         if self.size_bytes <= 0:
-            raise ValueError(
-                f"LengthPrefix.size_bytes must be > 0, got {self.size_bytes}"
-            )
+            raise ValueError(f"LengthPrefix.size_bytes must be > 0, got {self.size_bytes}")
 
     @property
     def hex_chars(self) -> int:
@@ -58,11 +56,11 @@ class LengthPrefix:
     def max_value(self) -> int:
         """Maximum length (in bytes) representable by this prefix."""
         if self.encoding == LengthPrefixEncoding.BCD:
-            return 10 ** (self.size_bytes * 2) - 1
+            return int(10 ** (self.size_bytes * 2) - 1)
         if self.encoding == LengthPrefixEncoding.ASCII:
-            return 10 ** self.size_bytes - 1
+            return int(10**self.size_bytes - 1)
         if self.encoding == LengthPrefixEncoding.BINARY:
-            return 256 ** self.size_bytes - 1
+            return int(256**self.size_bytes - 1)
         raise ValueError(f"Unknown LengthPrefixEncoding {self.encoding!r}")
 
 
@@ -176,17 +174,13 @@ class SubfieldSchema:
             else:
                 chars = sf.size_bytes * 2
                 if pos + chars > len(hex_str):
-                    raise InvalidTLVError(
-                        f"Truncated subfield {sf.name!r} at position {pos}"
-                    )
+                    raise InvalidTLVError(f"Truncated subfield {sf.name!r} at position {pos}")
                 chunk = hex_str[pos : pos + chars]
                 result[sf.name] = self._decode_value(chunk, sf.type)
                 pos += chars
 
         if pos != len(hex_str):
-            raise InvalidTLVError(
-                f"Extra data after schema: {len(hex_str) - pos} unconsumed chars"
-            )
+            raise InvalidTLVError(f"Extra data after schema: {len(hex_str) - pos} unconsumed chars")
 
         return result
 
@@ -236,9 +230,7 @@ class SubfieldSchema:
     def _encode_value_variable(value: str, sf: Subfield) -> str:
         if sf.type == SubfieldType.BCD:
             if not all(c in string.digits for c in value):
-                raise EncodingError(
-                    f"Subfield {sf.name!r}: BCD value contains non-digit char(s)"
-                )
+                raise EncodingError(f"Subfield {sf.name!r}: BCD value contains non-digit char(s)")
             if len(value) % 2 != 0:
                 raise EncodingError(
                     f"Subfield {sf.name!r}: variable BCD value must have even number of digits"
@@ -255,12 +247,11 @@ class SubfieldSchema:
 
         if sf.type == SubfieldType.BINARY:
             if not all(c in string.hexdigits for c in value):
-                raise EncodingError(
-                    f"Subfield {sf.name!r}: BINARY value contains non-hex char(s)"
-                )
+                raise EncodingError(f"Subfield {sf.name!r}: BINARY value contains non-hex char(s)")
             if len(value) % 2 != 0:
                 raise EncodingError(
-                    f"Subfield {sf.name!r}: variable BINARY value must have even number of hex chars"
+                    f"Subfield {sf.name!r}: variable BINARY value must have "
+                    f"even number of hex chars"
                 )
             return value.upper()
 
@@ -300,22 +291,16 @@ class SubfieldSchema:
             try:
                 return int(hex_chunk)
             except ValueError as exc:
-                raise InvalidTLVError(
-                    f"Invalid BCD length prefix {hex_chunk!r}"
-                ) from exc
+                raise InvalidTLVError(f"Invalid BCD length prefix {hex_chunk!r}") from exc
         if prefix.encoding == LengthPrefixEncoding.ASCII:
             try:
                 ascii_str = bytes.fromhex(hex_chunk).decode("ascii")
                 return int(ascii_str)
             except (ValueError, UnicodeDecodeError) as exc:
-                raise InvalidTLVError(
-                    f"Invalid ASCII length prefix {hex_chunk!r}"
-                ) from exc
+                raise InvalidTLVError(f"Invalid ASCII length prefix {hex_chunk!r}") from exc
         if prefix.encoding == LengthPrefixEncoding.BINARY:
             try:
                 return int.from_bytes(bytes.fromhex(hex_chunk), "big")
             except ValueError as exc:
-                raise InvalidTLVError(
-                    f"Invalid binary length prefix {hex_chunk!r}"
-                ) from exc
+                raise InvalidTLVError(f"Invalid binary length prefix {hex_chunk!r}") from exc
         raise ValueError(f"Unknown LengthPrefixEncoding {prefix.encoding!r}")

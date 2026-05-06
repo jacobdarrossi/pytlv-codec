@@ -1,7 +1,5 @@
 """Smoke tests for the basic ASCII TLV case."""
 
-import pytest
-
 from pytlv_codec import Codec, CodecConfig
 
 

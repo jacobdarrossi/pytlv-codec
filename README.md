@@ -1,5 +1,10 @@
 # pytlv-codec
 
+[![CI](https://github.com/jacobdarrossi/pytlv-codec/actions/workflows/ci.yml/badge.svg)](https://github.com/jacobdarrossi/pytlv-codec/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/pytlv-codec.svg)](https://pypi.org/project/pytlv-codec/)
+[![Python](https://img.shields.io/pypi/pyversions/pytlv-codec.svg)](https://pypi.org/project/pytlv-codec/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Configurable TLV/LTV codec for payment protocol sub-fields (ISO 8583, acquirer-style).
 
 ## Why
