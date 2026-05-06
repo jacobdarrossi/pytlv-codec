@@ -8,6 +8,12 @@ from pytlv_codec.config import (
     Order,
     ValueType,
 )
+from pytlv_codec.exceptions import (
+    EncodingError,
+    InvalidTLVError,
+    PytlvError,
+    UnsupportedConfigError,
+)
 
 __version__ = "0.1.0"
 
@@ -15,8 +21,12 @@ __all__ = [
     "Codec",
     "CodecConfig",
     "Encoding",
+    "EncodingError",
+    "InvalidTLVError",
     "LengthMeasure",
     "Order",
+    "PytlvError",
+    "UnsupportedConfigError",
     "ValueType",
     "__version__",
 ]
