@@ -5,14 +5,13 @@ the strings represent the hex representation of the underlying bytes — downstr
 conversion to actual binary is the responsibility of the caller (or a downstream
 library like pyiso8583).
 
-Supported in v0.2.0:
+Supported features:
 - Order.TLV and Order.LTV
-- length_includes_tag flag
-- All encodings (ASCII, BCD, HEX, BINARY) for tag / length
+- length_includes_tag flag (LTV variants where length covers tag + value)
+- All encodings (ASCII, BCD, HEX, BINARY) for tag and length
 - All value types (ASCII, BCD, HEX, BINARY) for length calculation
 
-Not yet supported:
-- LengthMeasure.LOGICAL_UNITS (only BYTES_ON_WIRE works currently)
+Length is always counted in bytes-on-wire (after binary serialization downstream).
 """
 
 from __future__ import annotations
@@ -22,14 +21,12 @@ import string
 from pytlv_codec.config import (
     CodecConfig,
     Encoding,
-    LengthMeasure,
     Order,
     ValueType,
 )
 from pytlv_codec.exceptions import (
     EncodingError,
     InvalidTLVError,
-    UnsupportedConfigError,
 )
 
 
@@ -43,8 +40,6 @@ class Codec:
 
     def encode(self, data: dict[str, str]) -> str:
         """Encode a dict of {tag: value} pairs into a TLV/LTV string."""
-        self._guard_supported()
-
         cfg = self.config
         parts: list[str] = []
 
@@ -64,8 +59,6 @@ class Codec:
 
     def decode(self, encoded: str) -> dict[str, str]:
         """Decode a TLV/LTV string back into a dict of {tag: value} pairs."""
-        self._guard_supported()
-
         cfg = self.config
         result: dict[str, str] = {}
         pos = 0
@@ -105,19 +98,6 @@ class Codec:
         return result
 
     # -- Internal helpers ------------------------------------------------
-
-    def _guard_supported(self) -> None:
-        """Raise UnsupportedConfigError for configurations not yet supported."""
-        cfg = self.config
-        unsupported: list[str] = []
-
-        if cfg.length_counts != LengthMeasure.BYTES_ON_WIRE:
-            unsupported.append(f"length_counts={cfg.length_counts.value}")
-
-        if unsupported:
-            raise UnsupportedConfigError(
-                f"Configuration not yet supported: {', '.join(unsupported)}"
-            )
 
     def _validate_tag(self, tag: str) -> None:
         cfg = self.config

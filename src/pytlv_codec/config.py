@@ -34,19 +34,12 @@ class ValueType(Enum):
     BINARY = "binary"
 
 
-class LengthMeasure(Enum):
-    """What unit the length field counts."""
-
-    BYTES_ON_WIRE = "bytes_on_wire"
-    LOGICAL_UNITS = "logical_units"
-
-
 @dataclass
 class CodecConfig:
     """Configuration for a TLV/LTV codec.
 
     Defaults match the simplest case: TLV order, ASCII everywhere,
-    2-char tags, 4-char lengths.
+    2-char tags, 4-char lengths. Length is always counted as bytes-on-wire.
     """
 
     order: Order = Order.TLV
@@ -56,7 +49,6 @@ class CodecConfig:
 
     length_size: int = 4
     length_encoding: Encoding = Encoding.ASCII
-    length_counts: LengthMeasure = LengthMeasure.BYTES_ON_WIRE
 
     value_type: ValueType = ValueType.ASCII
 

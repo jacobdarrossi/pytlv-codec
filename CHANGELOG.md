@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-05-06
+
+### Removed
+- `LengthMeasure` enum and `length_counts` field on `CodecConfig`. Length is now always counted in bytes-on-wire (the previous default and only supported value). The flag and unsupported-config guard added unnecessary surface area for a feature that wasn't needed yet. Will be reintroduced as a non-breaking enum addition if a real protocol case requires logical-units counting.
+
+### Changed
+- Cleanup of related guard logic in `Codec`. No behavior change for users not setting `length_counts` (the only previously valid value).
+
 ## [0.3.0] — 2026-05-06
 
 ### Added

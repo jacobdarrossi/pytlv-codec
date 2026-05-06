@@ -13,14 +13,13 @@ Most existing TLV libraries in Python target byte-oriented BER/DER (X.690, EMV c
 
 - **Order:** TLV vs LTV
 - **Tag/length encoding:** ASCII, BCD, HEX, binary
-- **Length measurement:** bytes-on-wire vs logical units
 - **LTV variants where length includes the tag**
 
 `pytlv-codec` provides a flexible, configurable codec for these formats.
 
 ## Status
 
-🚧 Early development (v0.3.0). API may change before 1.0.
+🚧 Early development (v0.3.1). API may change before 1.0.
 
 ## Install
 
@@ -127,7 +126,7 @@ fields = schema.unpack(decoded_envelope["33"])
 ## Configuration reference
 
 ```python
-from pytlv_codec import CodecConfig, Encoding, Order, ValueType, LengthMeasure
+from pytlv_codec import CodecConfig, Encoding, Order, ValueType
 
 CodecConfig(
     order=Order.TLV,                          # Order.TLV | Order.LTV
@@ -135,7 +134,6 @@ CodecConfig(
     tag_encoding=Encoding.ASCII,              # ASCII | BCD | HEX | BINARY
     length_size=4,
     length_encoding=Encoding.ASCII,
-    length_counts=LengthMeasure.BYTES_ON_WIRE,
     value_type=ValueType.ASCII,               # ASCII | BCD | HEX | BINARY
     length_includes_tag=False,                # LTV: length covers tag + value
     pad_char="0",
@@ -144,6 +142,8 @@ CodecConfig(
     big_endian=True,
 )
 ```
+
+Length is always counted as bytes-on-wire (after binary serialization downstream).
 
 ### How encodings affect bytes-on-wire
 

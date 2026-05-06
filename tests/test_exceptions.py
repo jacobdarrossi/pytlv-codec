@@ -7,7 +7,6 @@ from pytlv_codec import (
     CodecConfig,
     EncodingError,
     InvalidTLVError,
-    LengthMeasure,
     PytlvError,
     UnsupportedConfigError,
 )
@@ -111,16 +110,6 @@ class TestDecodingErrors:
             codec.decode("050003abc050003def")
 
 
-class TestUnsupportedConfig:
-    """UnsupportedConfigError raised for current limits."""
-
-    def test_logical_units_length_measure_raises_unsupported_config(self) -> None:
-        codec = Codec(CodecConfig(length_counts=LengthMeasure.LOGICAL_UNITS))
-
-        with pytest.raises(UnsupportedConfigError, match="length_counts=logical_units"):
-            codec.encode({"01": "x"})
-
-
 class TestExceptionsCanBeCaughtGenerically:
     """Multiple inheritance: existing generic handlers still work."""
 
@@ -136,19 +125,23 @@ class TestExceptionsCanBeCaughtGenerically:
         with pytest.raises(ValueError):
             codec.decode("0")
 
-    def test_unsupported_config_caught_as_not_implemented(self) -> None:
-        codec = Codec(CodecConfig(length_counts=LengthMeasure.LOGICAL_UNITS))
-
-        with pytest.raises(NotImplementedError):
-            codec.encode({"01": "x"})
-
     def test_all_caught_as_pytlv_error(self) -> None:
-        codec_a = Codec(CodecConfig())
-        codec_b = Codec(CodecConfig(length_counts=LengthMeasure.LOGICAL_UNITS))
+        codec = Codec(CodecConfig())
 
         with pytest.raises(PytlvError):
-            codec_a.encode({"X": "value"})
+            codec.encode({"X": "value"})
         with pytest.raises(PytlvError):
-            codec_a.decode("0")
-        with pytest.raises(PytlvError):
-            codec_b.encode({"01": "x"})
+            codec.decode("0")
+
+
+class TestUnsupportedConfigErrorClassExists:
+    """The UnsupportedConfigError class exists for forward compatibility.
+
+    Currently no codec configuration raises it, but the type is part of
+    the public API so future versions can use it without breaking changes.
+    """
+
+    def test_class_is_importable(self) -> None:
+        assert UnsupportedConfigError is not None
+        assert issubclass(UnsupportedConfigError, PytlvError)
+        assert issubclass(UnsupportedConfigError, NotImplementedError)

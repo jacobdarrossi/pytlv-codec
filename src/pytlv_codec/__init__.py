@@ -4,7 +4,6 @@ from pytlv_codec.codec import Codec
 from pytlv_codec.config import (
     CodecConfig,
     Encoding,
-    LengthMeasure,
     Order,
     ValueType,
 )
@@ -22,7 +21,7 @@ from pytlv_codec.schema import (
     SubfieldType,
 )
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 __all__ = [
     "Codec",
@@ -30,7 +29,6 @@ __all__ = [
     "Encoding",
     "EncodingError",
     "InvalidTLVError",
-    "LengthMeasure",
     "LengthPrefix",
     "LengthPrefixEncoding",
     "Order",
